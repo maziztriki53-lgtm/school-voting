@@ -1,155 +1,130 @@
-// Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyCuaIPuFIwg2y97ClvtXZ6RaohErEWYwww",
-    authDomain: "school-voting-online.firebaseapp.com",
-    databaseURL: "https://school-voting-online-default-rtdb.firebaseio.com",
-    projectId: "school-voting-online",
-    storageBucket: "school-voting-online.appspot.com",
-    messagingSenderId: "1723386840",
-    appId: "1:1723386840:web:a3f6381018268c443ac0ad",
-    measurementId: "G-JTP0YZCJ5Y"
-};
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-firebase.analytics();
-
-// Generate 6-digit room code
-function generateRoomCode() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-}
+let currentRoom = null;
+let votingStarted = false;
 
 // Create Room
-function createRoom() {
-    const name = document.getElementById('ownerName').value.trim();
-    const project = document.getElementById('ownerProject').value.trim();
-    if (!name || !project) return alert("Enter name and project");
+ownerName && document.getElementById("createBtn").addEventListener("click", async () => {
+  const name = ownerName.value.trim();
+  const project = ownerProject.value.trim();
+  if (!name || !project) return alert("Fill all fields!");
 
-    const roomCode = generateRoomCode();
-    const roomData = {
-        owner: name,
-        participants: { [name]: { voted: [] } },
-        projects: [{ name, project, votes: 0 }]
-    };
+  const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    db.ref('rooms/' + roomCode).set(roomData, (error) => {
-        if (error) {
-            alert("Error creating room: " + error);
-        } else {
-            document.getElementById('roomCodeDisplay').innerText = "Room Code: " + roomCode;
-            document.getElementById('startVotingBtn').style.display = "inline-block";
-            alert("Room created! Share this code: " + roomCode);
-        }
-    });
-}
+  const roomRef = window.dbRef(window.db, "rooms/" + roomCode);
+  const newProjectRef = window.dbPush(roomRef);
+
+  await window.dbSet(newProjectRef, { name, project, votes: 0, owner: true });
+
+  currentRoom = roomCode;
+  showLobby(roomCode);
+});
 
 // Join Room
-function joinRoom() {
-    const name = document.getElementById('joinName').value.trim();
-    const project = document.getElementById('joinProject').value.trim();
-    const code = document.getElementById('roomCodeInput').value.trim();
+document.getElementById("joinBtn").addEventListener("click", async () => {
+  const code = joinCode.value.trim();
+  const name = joinName.value.trim();
+  const project = joinProjectInput.value.trim();
+  if (!code || !name || !project) return alert("Fill all fields!");
 
-    if (!name || !project || !code) return alert("Fill all fields");
+  const roomRef = window.dbRef(window.db, "rooms/" + code);
+  const snapshot = await window.dbGet(roomRef);
 
-    const roomRef = db.ref('rooms/' + code);
-    roomRef.get().then(snapshot => {
-        if (!snapshot.exists()) return alert("Invalid Room Code");
+  if (!snapshot.exists()) {
+    joinStatus.textContent = "Room not found!";
+  } else {
+    const newProjectRef = window.dbPush(roomRef);
+    await window.dbSet(newProjectRef, { name, project, votes: 0, owner:false });
+    currentRoom = code;
+    showLobby(code);
+  }
+});
 
-        const room = snapshot.val();
-        if (room.participants[name]) return alert("This name is already taken in the room");
-
-        room.projects.push({ name, project, votes: 0 });
-        room.participants[name] = { voted: [] };
-
-        roomRef.set(room, (error) => {
-            if (error) return alert("Error joining room: " + error);
-
-            alert(name + " joined the room!");
-            document.getElementById('createRoomSection').style.display = 'none';
-            document.getElementById('joinRoomSection').style.display = 'none';
-            document.getElementById('votingSection').style.display = 'block';
-            renderProjectsFirebase(code);
-        });
-    });
+// Display Lobby
+function showLobby(code){
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("lobby").classList.remove("hidden");
+  roomCodeDisplay.textContent = code;
+  createdCode.textContent = isOwner ? "Your room code: "+code : "";
+  listenRoom(code);
 }
 
-// Start Voting
-function startVoting() {
-    const code = document.getElementById('roomCodeDisplay').innerText.split("Room Code: ")[1];
-    if (!code) return alert("Room not found");
+// Listen for updates
+function listenRoom(code){
+  const roomRef = window.dbRef(window.db, "rooms/" + code);
+  window.dbOnValue(roomRef, (snapshot)=>{
+    const list = snapshot.val();
+    updateLobbyTable(list);
 
-    document.getElementById('createRoomSection').style.display = 'none';
-    document.getElementById('joinRoomSection').style.display = 'none';
-    document.getElementById('votingSection').style.display = 'block';
-    renderProjectsFirebase(code);
-}
-
-// Render Projects
-function renderProjectsFirebase(roomCode) {
-    const roomRef = db.ref('rooms/' + roomCode);
-    roomRef.on('value', snapshot => {
-        if (!snapshot.exists()) return;
-        const room = snapshot.val();
-        const container = document.getElementById('projectsContainer');
-        container.innerHTML = "";
-
-        room.projects.forEach((p, index) => {
-            const div = document.createElement('div');
-            div.className = "projectCard";
-            div.id = "project-" + index;
-            div.innerHTML = `
-                <h3>${p.name}'s Project</h3>
-                <p>${p.project}</p>
-                <p>Votes: <span id="votes-${index}">${p.votes}</span></p>
-                <input type="text" placeholder="Your Name" id="voterName-${index}">
-                <button onclick="vote('${roomCode}', ${index})">Vote</button>
-            `;
-            container.appendChild(div);
-        });
-
-        highlightWinner(room);
-    });
-}
-
-// Vote
-function vote(roomCode, projectIndex) {
-    const voterName = document.getElementById('voterName-' + projectIndex).value.trim();
-    if (!voterName) return alert("Enter your name to vote");
-
-    const roomRef = db.ref('rooms/' + roomCode);
-    roomRef.get().then(snapshot => {
-        if (!snapshot.exists()) return alert("Room not found");
-
-        const room = snapshot.val();
-        if (!room.participants[voterName]) return alert("Name not registered");
-        if (room.participants[voterName].voted.includes(projectIndex)) return alert("Already voted");
-
-        room.projects[projectIndex].votes++;
-        room.participants[voterName].voted.push(projectIndex);
-
-        roomRef.set(room);
-    });
-}
-
-// Highlight Winner
-function highlightWinner(room) {
-    const projects = room.projects;
-    const maxVotes = Math.max(...projects.map(p => p.votes));
-    const winnerIndex = projects.findIndex(p => p.votes === maxVotes);
-
-    const container = document.getElementById('projectsContainer');
-    container.childNodes.forEach((card, i) => {
-        if (i === winnerIndex && maxVotes > 0) card.style.border = "3px solid green";
-        else if (card.className === "projectCard") card.style.border = "1px solid gray";
-    });
-
-    let winnerName = projects[winnerIndex].name;
-    let winnerText = document.getElementById('winnerDisplay');
-    if (!winnerText) {
-        winnerText = document.createElement('h2');
-        winnerText.id = 'winnerDisplay';
-        container.parentNode.insertBefore(winnerText, container);
+    if(votingStarted){
+      showVotePage(list);
+      updateResults(list);
     }
-    winnerText.innerHTML = `🏆 Current Winner: ${winnerName}`;
+  });
 }
+
+// Update lobby table
+function updateLobbyTable(list){
+  const table = document.getElementById("projectTable");
+  table.innerHTML = "";
+  for(const key in list){
+    const p = list[key];
+    table.innerHTML += `<tr><td>${p.name}</td><td>${p.project}</td><td>${p.votes}</td></tr>`;
+  }
+}
+
+// Start voting
+document.getElementById("startBtn").addEventListener("click", ()=>{
+  if(!currentRoom) return;
+  document.getElementById("lobby").classList.add("hidden");
+  document.getElementById("votePage").classList.remove("hidden");
+  votingStarted = true;
+});
+
+// Show voting UI
+function showVotePage(list){
+  if(!votingStarted) return;
+  const voteList = document.getElementById("voteList");
+  voteList.innerHTML = "";
+  for(const key in list){
+    const p = list[key];
+    voteList.innerHTML += `<li>${p.name} — ${p.project} <button class="voteBtn" onclick="vote('${key}')">Vote</button></li>`;
+  }
+}
+
+// Vote for project
+window.vote = async function(key){
+  if(!currentRoom) return;
+  const projRef = window.dbRef(window.db, "rooms/" + currentRoom + "/" + key);
+  const snapshot = await window.dbGet(projRef);
+  if(snapshot.exists()){
+    const currentVotes = snapshot.val().votes;
+    await window.dbUpdateData(projRef, { votes: currentVotes + 1 });
+  }
+};
+
+// Show results and determine winner
+function updateResults(list){
+  document.getElementById("votePage").classList.add("hidden");
+  document.getElementById("results").classList.remove("hidden");
+
+  const resultsTable = document.getElementById("resultsTable");
+  resultsTable.innerHTML = "";
+
+  let winnerName = "";
+  let maxVotes = -1;
+
+  for(const key in list){
+    const p = list[key];
+    resultsTable.innerHTML += `<tr><td>${p.name}</td><td>${p.project}</td><td>${p.votes}</td></tr>`;
+    if(p.votes > maxVotes){
+      maxVotes = p.votes;
+      winnerName = p.name + " ("+p.project+")";
+    }
+  }
+
+  document.getElementById("winner").textContent = winnerName;
+}
+
+// back to home
+document.getElementById("backHomeBtn").addEventListener("click", ()=>{
+  location.reload();
+});
