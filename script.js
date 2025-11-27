@@ -1,14 +1,15 @@
 let currentRoom = null;
 let votingStarted = false;
 
-// Get input elements
+// Get inputs
 const ownerName = document.getElementById("ownerName");
 const ownerProject = document.getElementById("ownerProject");
 const joinCode = document.getElementById("joinCode");
 const joinName = document.getElementById("joinName");
 const joinProjectInput = document.getElementById("joinProjectInput");
+const joinStatus = document.getElementById("joinStatus");
 
-// Create room
+// Create Room
 document.getElementById("createBtn").addEventListener("click", async () => {
   const name = ownerName.value.trim();
   const project = ownerProject.value.trim();
@@ -25,7 +26,7 @@ document.getElementById("createBtn").addEventListener("click", async () => {
   showLobby(roomCode);
 });
 
-// Join room
+// Join Room
 document.getElementById("joinBtn").addEventListener("click", async () => {
   const code = joinCode.value.trim();
   const name = joinName.value.trim();
@@ -39,7 +40,7 @@ document.getElementById("joinBtn").addEventListener("click", async () => {
     joinStatus.textContent = "Room not found!";
   } else {
     const newProjectRef = window.dbPush(roomRef);
-    await window.dbSet(newProjectRef, { name, project, votes: 0, owner: false });
+    await window.dbSet(newProjectRef, { name, project, votes: 0, owner:false });
     currentRoom = code;
     showLobby(code);
   }
@@ -50,24 +51,19 @@ function showLobby(code) {
   document.getElementById("home").classList.add("hidden");
   document.getElementById("lobby").classList.remove("hidden");
   document.getElementById("roomCodeDisplay").textContent = code;
-  listenRoom(code);
+  document.getElementById("createdCode").textContent = "";
 }
 
-// Listen for realtime updates
+// Listen for updates and update table
 function listenRoom(code) {
   const roomRef = window.dbRef(window.db, "rooms/" + code);
   window.dbOnValue(roomRef, (snapshot) => {
     const list = snapshot.val();
     updateLobbyTable(list);
-
-    if (votingStarted) {
-      showVotePage(list);
-      updateResults(list);
-    }
   });
 }
 
-// Update Lobby Table
+// Update table in lobby
 function updateLobbyTable(list) {
   const table = document.getElementById("projectTable");
   table.innerHTML = "";
@@ -77,28 +73,35 @@ function updateLobbyTable(list) {
   }
 }
 
-// Start voting
-document.getElementById("startBtn").addEventListener("click", () => {
-  if (!currentRoom) return;
+// Start Voting + show choices
+document.getElementById("startBtn").addEventListener("click", async () => {
+  if (!currentRoom) return alert("No room selected!");
+
+  votingStarted = true;
+
   document.getElementById("lobby").classList.add("hidden");
   document.getElementById("votePage").classList.remove("hidden");
-  votingStarted = true;
+
+  const roomRef = window.dbRef(window.db, "rooms/" + currentRoom);
+  const snap = await window.dbGet(roomRef);
+
+  if (snap.exists()) {
+    const projects = snap.val();
+    const voteList = document.getElementById("voteList");
+    voteList.innerHTML = "";
+
+    for (const key in projects) {
+      const p = projects[key];
+      voteList.innerHTML += `
+        <li>${p.name} — ${p.project}
+          <button class="voteBtn" onclick="vote('${key}')">Vote</button>
+        </li>`;
+    }
+  }
 });
 
-// Show Vote UI
-function showVotePage(list) {
-  const voteList = document.getElementById("voteList");
-  voteList.innerHTML = "";
-  for (const key in list) {
-    const p = list[key];
-    voteList.innerHTML += `<li>${p.name} — ${p.project} 
-      <button class="voteBtn" onclick="vote('${key}')">Vote</button>
-    </li>`;
-  }
-}
-
-// Voting logic (1 vote per click for now)
-window.vote = async function (key) {
+// Voting function
+window.vote = async function(key) {
   if (!currentRoom) return;
   const projRef = window.dbRef(window.db, "rooms/" + currentRoom + "/" + key);
   const snapshot = await window.dbGet(projRef);
@@ -106,29 +109,31 @@ window.vote = async function (key) {
     const currentVotes = snapshot.val().votes;
     await window.dbUpdateData(projRef, { votes: currentVotes + 1 });
   }
-};
+}
 
-// Results + Winner
-function updateResults(list) {
+// Show Results + detect winner
+window.showResults = function(list){
   const resultsTable = document.getElementById("resultsTable");
   resultsTable.innerHTML = "";
   let winnerName = "";
-  let maxVotes = -1;
+  let max = -1;
 
   for (const key in list) {
     const p = list[key];
     resultsTable.innerHTML += `<tr><td>${p.name}</td><td>${p.project}</td><td>${p.votes}</td></tr>`;
-    if (p.votes > maxVotes) {
-      maxVotes = p.votes;
-      winnerName = p.name + " (" + p.project + ")";
+    if(p.votes > max){
+       max = p.votes;
+       winnerName = p.name + " (" + p.project + ")";
     }
   }
 
   document.getElementById("results").classList.remove("hidden");
   document.getElementById("winner").textContent = winnerName;
-}
+};
 
-// Back home (reload)
-document.getElementById("backHomeBtn").addEventListener("click", () => {
-  location.reload();
+// Listen results when voting started
+window.dbOnValue(window.dbRef(window.db, "rooms/" + currentRoom), (snap)=>{
+  if(votingStarted && snap.exists()){
+    showResults(snap.val());
+  }
 });
