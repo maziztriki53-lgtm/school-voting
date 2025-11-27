@@ -1,8 +1,3 @@
-// Firebase SDK imports
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
-import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
-
 // Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCuaIPuFIwg2y97ClvtXZ6RaohErEWYwww",
@@ -16,20 +11,19 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const db = getDatabase(app);
+const app = firebase.initializeApp(firebaseConfig);
+const analytics = firebase.analytics();
+const db = firebase.database();
 
-// Generate random 6-digit room code
+// Generate 6-digit room code
 function generateRoomCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 // Create Room
-window.createRoom = function() {
+function createRoom() {
     const name = document.getElementById('ownerName').value.trim();
     const project = document.getElementById('ownerProject').value.trim();
-
     if(!name || !project) return alert("Enter name and project");
 
     const roomCode = generateRoomCode();
@@ -39,38 +33,35 @@ window.createRoom = function() {
         projects: [{ name, project, votes: 0 }]
     };
 
-    set(ref(db, 'rooms/' + roomCode), roomData)
+    db.ref('rooms/' + roomCode).set(roomData)
         .then(() => {
             document.getElementById('roomCodeDisplay').innerText = "Room Code: " + roomCode;
             document.getElementById('startVotingBtn').style.display = "inline-block";
             alert("Room created! Share this code with your friends: " + roomCode);
         })
         .catch(err => alert("Error creating room: " + err));
-};
+}
 
 // Join Room
-window.joinRoom = function() {
+function joinRoom() {
     const name = document.getElementById('joinName').value.trim();
     const project = document.getElementById('joinProject').value.trim();
     const code = document.getElementById('roomCodeInput').value.trim();
-
     if(!name || !project || !code) return alert("Fill all fields");
 
-    const roomRef = ref(db, 'rooms/' + code);
-
-    get(roomRef).then(snapshot => {
+    const roomRef = db.ref('rooms/' + code);
+    roomRef.get().then(snapshot => {
         if(!snapshot.exists()) return alert("Invalid Room Code");
-
         const room = snapshot.val();
         if(room.participants[name]) return alert("This name is already taken in the room");
 
         room.projects.push({ name, project, votes: 0 });
         room.participants[name] = { voted: [] };
 
-        set(roomRef, room)
+        roomRef.set(room)
             .then(() => {
                 alert(name + " joined the room!");
-                // إظهار صفحة التصويت مباشرة بعد الانضمام
+                // Show voting section after join
                 document.getElementById('createRoomSection').style.display = 'none';
                 document.getElementById('joinRoomSection').style.display = 'none';
                 document.getElementById('votingSection').style.display = 'block';
@@ -78,27 +69,24 @@ window.joinRoom = function() {
             })
             .catch(err => alert("Error joining room: " + err));
     });
-};
+}
 
-// Start Voting (لصاحب الغرفة)
-window.startVoting = function() {
+// Start Voting (owner)
+function startVoting() {
     const code = document.getElementById('roomCodeDisplay').innerText.split("Room Code: ")[1];
     if(!code) return alert("Room not found");
 
     document.getElementById('createRoomSection').style.display = 'none';
     document.getElementById('joinRoomSection').style.display = 'none';
     document.getElementById('votingSection').style.display = 'block';
-
     renderProjectsFirebase(code);
-};
+}
 
-// Render Projects From Firebase
+// Render Projects
 function renderProjectsFirebase(roomCode) {
-    const roomRef = ref(db, 'rooms/' + roomCode);
-
-    onValue(roomRef, snapshot => {
+    const roomRef = db.ref('rooms/' + roomCode);
+    roomRef.on('value', snapshot => {
         if(!snapshot.exists()) return;
-
         const room = snapshot.val();
         const container = document.getElementById('projectsContainer');
         container.innerHTML = "";
@@ -121,14 +109,13 @@ function renderProjectsFirebase(roomCode) {
     });
 }
 
-// Vote Function
-window.vote = function(roomCode, projectIndex) {
+// Vote
+function vote(roomCode, projectIndex) {
     const voterName = document.getElementById('voterName-' + projectIndex).value.trim();
     if(!voterName) return alert("Enter your name to vote");
 
-    const roomRef = ref(db, 'rooms/' + roomCode);
-
-    get(roomRef).then(snapshot => {
+    const roomRef = db.ref('rooms/' + roomCode);
+    roomRef.get().then(snapshot => {
         if(!snapshot.exists()) return alert("Room not found");
 
         const room = snapshot.val();
@@ -138,24 +125,20 @@ window.vote = function(roomCode, projectIndex) {
         room.projects[projectIndex].votes++;
         room.participants[voterName].voted.push(projectIndex);
 
-        set(roomRef, room)
-            .catch(err => alert("Error voting: " + err));
+        roomRef.set(room).catch(err => alert("Error voting: " + err));
     });
-};
+}
 
 // Highlight Winner
 function highlightWinnerFirebase(roomCode, room) {
     const projects = room.projects;
-    let maxVotes = Math.max(...projects.map(p => p.votes));
-    let winnerIndex = projects.findIndex(p => p.votes === maxVotes);
+    const maxVotes = Math.max(...projects.map(p => p.votes));
+    const winnerIndex = projects.findIndex(p => p.votes === maxVotes);
 
     const container = document.getElementById('projectsContainer');
     container.childNodes.forEach((card, i) => {
-        if(i === winnerIndex && maxVotes > 0) {
-            card.style.border = "3px solid green";
-        } else if(card.className === "projectCard") {
-            card.style.border = "1px solid gray";
-        }
+        if(i === winnerIndex && maxVotes > 0) card.style.border = "3px solid green";
+        else if(card.className === "projectCard") card.style.border = "1px solid gray";
     });
 
     let winnerName = projects[winnerIndex].name;
