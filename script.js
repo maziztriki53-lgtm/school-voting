@@ -68,12 +68,19 @@ window.joinRoom = function() {
         room.participants[name] = { voted: [] };
 
         set(roomRef, room)
-            .then(() => alert(name + " joined the room!"))
+            .then(() => {
+                alert(name + " joined the room!");
+                // إظهار صفحة التصويت مباشرة بعد الانضمام
+                document.getElementById('createRoomSection').style.display = 'none';
+                document.getElementById('joinRoomSection').style.display = 'none';
+                document.getElementById('votingSection').style.display = 'block';
+                renderProjectsFirebase(code);
+            })
             .catch(err => alert("Error joining room: " + err));
     });
 };
 
-// Start Voting
+// Start Voting (لصاحب الغرفة)
 window.startVoting = function() {
     const code = document.getElementById('roomCodeDisplay').innerText.split("Room Code: ")[1];
     if(!code) return alert("Room not found");
