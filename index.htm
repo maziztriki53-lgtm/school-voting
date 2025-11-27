@@ -53,7 +53,7 @@
   <button id="backHomeBtn">Back Home</button>
 </div>
 
-<!-- Firebase modular SDK + your config -->
+<!-- Firebase Modular SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
@@ -73,17 +73,17 @@
   const app = initializeApp(firebaseConfig);
   getAnalytics(app);
 
-  // expose database functions globally so script.js can use them
+  // Expose DB functions for script.js
   window.db = getDatabase(app);
   window.dbRef = ref;
   window.dbPush = push;
   window.dbSet = set;
   window.dbOnValue = onValue;
   window.dbGet = get;
-  window.dbUpdate = update;
   window.dbUpdateData = update;
 </script>
 
 <script type="module" src="script.js"></script>
+
 </body>
 </html>
