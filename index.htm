@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>School Project Voting Rooms</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>School Project Voting</h1>
+
+    <div id="createRoomSection">
+        <h2>Create Room</h2>
+        <input type="text" id="ownerName" placeholder="Your Name">
+        <input type="text" id="ownerProject" placeholder="Your Project">
+        <button onclick="createRoom()">Create Room</button>
+        <p id="roomCodeDisplay"></p>
+        <button id="startVotingBtn" onclick="startVoting()" style="display:none;">Start Voting</button>
+    </div>
+
+    <div id="joinRoomSection">
+        <h2>Join Room</h2>
+        <input type="text" id="joinName" placeholder="Your Name">
+        <input type="text" id="joinProject" placeholder="Your Project">
+        <input type="text" id="roomCodeInput" placeholder="Room Code">
+        <button onclick="joinRoom()">Join Room</button>
+    </div>
+
+    <div id="votingSection" style="display:none;">
+        <h2>Vote for the Best Project</h2>
+        <div id="projectsContainer"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
