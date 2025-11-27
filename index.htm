@@ -1,40 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>School Project Voting Rooms</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Project Room Voting</title>
+<link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-    <h1>School Project Voting</h1>
 
-    <div id="createRoomSection">
-        <h2>Create Room</h2>
-        <input type="text" id="ownerName" placeholder="Your Name">
-        <input type="text" id="ownerProject" placeholder="Your Project">
-        <button onclick="createRoom()">Create Room</button>
-        <p id="roomCodeDisplay"></p>
-        <button id="startVotingBtn" onclick="startVoting()" style="display:none;">Start Voting</button>
-    </div>
+<div id="home">
+  <h1>Project Voting Rooms</h1>
 
-    <div id="joinRoomSection">
-        <h2>Join Room</h2>
-        <input type="text" id="joinName" placeholder="Your Name">
-        <input type="text" id="joinProject" placeholder="Your Project">
-        <input type="text" id="roomCodeInput" placeholder="Room Code">
-        <button onclick="joinRoom()">Join Room</button>
-    </div>
+  <div class="card">
+    <h2>Create Room</h2>
+    <input id="ownerName" placeholder="Your name"/>
+    <input id="ownerProject" placeholder="Your project"/>
+    <button id="createBtn">Create</button>
+    <p id="createdCode"></p>
+  </div>
 
-    <div id="votingSection" style="display:none;">
-        <h2>Vote for the Best Project</h2>
-        <div id="projectsContainer"></div>
-    </div>
+  <div class="card">
+    <h2>Join Room</h2>
+    <input id="joinCode" placeholder="Room 6-digit code"/>
+    <input id="joinName" placeholder="Your name"/>
+    <input id="joinProjectInput" placeholder="Your project"/>
+    <button id="joinBtn">Join</button>
+    <p id="joinStatus"></p>
+  </div>
+</div>
 
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js"></script>
+<div id="lobby" class="hidden">
+  <h2>Room Lobby — Code: <span id="roomCodeDisplay"></span></h2>
+  <table>
+    <thead><tr><th>Name</th><th>Project</th><th>Votes</th></tr></thead>
+    <tbody id="projectTable"></tbody>
+  </table>
+  <button id="startBtn">Start Voting</button>
+</div>
 
-    <script src="script.js"></script>
+<div id="votePage" class="hidden">
+  <h2>Vote for the best project</h2>
+  <ul id="voteList"></ul>
+</div>
+
+<div id="results" class="hidden">
+  <h2>Results</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Project</th><th>Votes</th></tr></thead>
+    <tbody id="resultsTable"></tbody>
+  </table>
+  <h3>Winner: <span id="winner"></span></h3>
+  <button id="backHomeBtn">Back Home</button>
+</div>
+
+<!-- Firebase modular SDK + your config -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
+  import { getDatabase, ref, push, set, onValue, get, update } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCuaIPuFIwg2y97ClvtXZ6RaohErEWYwww",
+    authDomain: "school-voting-online.firebaseapp.com",
+    databaseURL: "https://school-voting-online-default-rtdb.firebaseio.com",
+    projectId: "school-voting-online",
+    storageBucket: "school-voting-online.firebasestorage.app",
+    messagingSenderId: "1723386840",
+    appId: "1:1723386840:web:a3f6381018268c443ac0ad",
+    measurementId: "G-JTP0YZCJ5Y"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  getAnalytics(app);
+
+  // expose database functions globally so script.js can use them
+  window.db = getDatabase(app);
+  window.dbRef = ref;
+  window.dbPush = push;
+  window.dbSet = set;
+  window.dbOnValue = onValue;
+  window.dbGet = get;
+  window.dbUpdate = update;
+  window.dbUpdateData = update;
+</script>
+
+<script type="module" src="script.js"></script>
 </body>
 </html>
