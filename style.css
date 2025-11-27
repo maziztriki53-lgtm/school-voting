@@ -1,47 +1,71 @@
 body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-    background-color: #f5f5f5;
-    margin: 0;
-    padding: 20px;
+  font-family: Arial, sans-serif;
+  background:#f2f2f2;
+  margin:0;
+  padding:20px;
+  text-align:center;
 }
-
-h1 {
-    color: #333;
+.hidden { display:none; }
+.card {
+  background:white;
+  padding:15px;
+  margin:15px auto;
+  width:80%;
+  max-width:320px;
+  border-radius:12px;
+  box-shadow:0 3px 8px rgba(0,0,0,0.1);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
 }
-
 input {
-    padding: 8px;
-    margin: 5px;
-    width: 200px;
+  padding:10px;
+  border:1px solid #ccc;
+  border-radius:8px;
+  font-size:16px;
 }
-
 button {
-    padding: 8px 12px;
-    margin: 5px;
-    cursor: pointer;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
+  padding:10px;
+  background:#4CAF50;
+  color:white;
+  border:none;
+  border-radius:8px;
+  font-size:16px;
+  cursor:pointer;
 }
-
-button:hover {
-    background-color: #0056b3;
+table {
+  width:90%;
+  max-width:600px;
+  margin:15px auto;
+  border-collapse:collapse;
+  background:white;
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 3px 8px rgba(0,0,0,0.1);
 }
-
-.projectCard {
-    background-color: white;
-    padding: 15px;
-    margin: 10px auto;
-    border: 1px solid gray;
-    border-radius: 10px;
-    width: 300px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+th, td {
+  padding:12px;
+  border-bottom:1px solid #ddd;
 }
-
-#projectsContainer {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+ul { list-style:none; padding:0; }
+li {
+  background:white;
+  margin:8px auto;
+  padding:12px;
+  width:90%;
+  max-width:340px;
+  border-radius:8px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
+.voteBtn {
+  background:#2196F3;
+  padding:8px 14px;
+  border-radius:6px;
+  font-size:15px;
+  color:white;
+  cursor:pointer;
+}
+.voteBtn:hover{opacity:0.9;}
