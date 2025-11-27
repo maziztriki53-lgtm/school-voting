@@ -1,18 +1,10 @@
 let currentRoom = null;
 let votingStarted = false;
 
-// Get inputs
-const ownerName = document.getElementById("ownerName");
-const ownerProject = document.getElementById("ownerProject");
-const joinCode = document.getElementById("joinCode");
-const joinName = document.getElementById("joinName");
-const joinProjectInput = document.getElementById("joinProjectInput");
-const joinStatus = document.getElementById("joinStatus");
-
 // Create Room
 document.getElementById("createBtn").addEventListener("click", async () => {
-  const name = ownerName.value.trim();
-  const project = ownerProject.value.trim();
+  const name = document.getElementById("ownerName").value.trim();
+  const project = document.getElementById("ownerProject").value.trim();
   if (!name || !project) return alert("Fill all fields!");
 
   const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -24,46 +16,47 @@ document.getElementById("createBtn").addEventListener("click", async () => {
 
   currentRoom = roomCode;
   showLobby(roomCode);
+  listenRoom(roomCode);
 });
 
 // Join Room
 document.getElementById("joinBtn").addEventListener("click", async () => {
-  const code = joinCode.value.trim();
-  const name = joinName.value.trim();
-  const project = joinProjectInput.value.trim();
+  const code = document.getElementById("joinCode").value.trim();
+  const name = document.getElementById("joinName").value.trim();
+  const project = document.getElementById("joinProjectInput").value.trim();
   if (!code || !name || !project) return alert("Fill all fields!");
 
   const roomRef = window.dbRef(window.db, "rooms/" + code);
   const snapshot = await window.dbGet(roomRef);
 
   if (!snapshot.exists()) {
-    joinStatus.textContent = "Room not found!";
+    document.getElementById("joinStatus").textContent = "Room not found!";
   } else {
     const newProjectRef = window.dbPush(roomRef);
     await window.dbSet(newProjectRef, { name, project, votes: 0, owner:false });
     currentRoom = code;
     showLobby(code);
+    listenRoom(code);
   }
 });
 
-// Show Lobby
+// Show Lobby Page
 function showLobby(code) {
   document.getElementById("home").classList.add("hidden");
   document.getElementById("lobby").classList.remove("hidden");
   document.getElementById("roomCodeDisplay").textContent = code;
-  document.getElementById("createdCode").textContent = "";
 }
 
-// Listen for updates and update table
+// Listen Firebase Room Updates
 function listenRoom(code) {
   const roomRef = window.dbRef(window.db, "rooms/" + code);
   window.dbOnValue(roomRef, (snapshot) => {
-    const list = snapshot.val();
-    updateLobbyTable(list);
+    updateLobbyTable(snapshot.val());
+    if (votingStarted) showResults(snapshot.val());
   });
 }
 
-// Update table in lobby
+// Update Table in Lobby
 function updateLobbyTable(list) {
   const table = document.getElementById("projectTable");
   table.innerHTML = "";
@@ -73,67 +66,59 @@ function updateLobbyTable(list) {
   }
 }
 
-// Start Voting + show choices
+// Show Voting Choices
 document.getElementById("startBtn").addEventListener("click", async () => {
   if (!currentRoom) return alert("No room selected!");
 
   votingStarted = true;
-
   document.getElementById("lobby").classList.add("hidden");
   document.getElementById("votePage").classList.remove("hidden");
 
   const roomRef = window.dbRef(window.db, "rooms/" + currentRoom);
   const snap = await window.dbGet(roomRef);
+  const projects = snap.val();
 
-  if (snap.exists()) {
-    const projects = snap.val();
-    const voteList = document.getElementById("voteList");
-    voteList.innerHTML = "";
-
-    for (const key in projects) {
-      const p = projects[key];
-      voteList.innerHTML += `
-        <li>${p.name} — ${p.project}
-          <button class="voteBtn" onclick="vote('${key}')">Vote</button>
-        </li>`;
-    }
+  const voteList = document.getElementById("voteList");
+  voteList.innerHTML = "";
+  for (const key in projects) {
+    const p = projects[key];
+    voteList.innerHTML += `
+      <li>${p.name} — ${p.project}
+      <button class="voteBtn" data-key="${key}">Vote</button>
+      </li>
+    `;
   }
+
+  // Add click listeners to all Vote buttons
+  document.querySelectorAll(".voteBtn").forEach(btn => {
+    btn.addEventListener("click", () => vote(btn.getAttribute("data-key")));
+  });
 });
 
-// Voting function
-window.vote = async function(key) {
-  if (!currentRoom) return;
+// Voting Function
+async function vote(key) {
   const projRef = window.dbRef(window.db, "rooms/" + currentRoom + "/" + key);
   const snapshot = await window.dbGet(projRef);
-  if (snapshot.exists()) {
-    const currentVotes = snapshot.val().votes;
-    await window.dbUpdateData(projRef, { votes: currentVotes + 1 });
-  }
+  const currentVotes = snapshot.val().votes;
+  await window.dbUpdateData(projRef, { votes: currentVotes + 1 });
 }
 
-// Show Results + detect winner
-window.showResults = function(list){
+// Show Results + Winner
+function showResults(list) {
   const resultsTable = document.getElementById("resultsTable");
   resultsTable.innerHTML = "";
-  let winnerName = "";
   let max = -1;
+  let winner = "";
 
   for (const key in list) {
     const p = list[key];
     resultsTable.innerHTML += `<tr><td>${p.name}</td><td>${p.project}</td><td>${p.votes}</td></tr>`;
-    if(p.votes > max){
-       max = p.votes;
-       winnerName = p.name + " (" + p.project + ")";
+    if (p.votes > max) {
+      max = p.votes;
+      winner = `${p.name} (${p.project})`;
     }
   }
 
   document.getElementById("results").classList.remove("hidden");
-  document.getElementById("winner").textContent = winnerName;
-};
-
-// Listen results when voting started
-window.dbOnValue(window.dbRef(window.db, "rooms/" + currentRoom), (snap)=>{
-  if(votingStarted && snap.exists()){
-    showResults(snap.val());
-  }
-});
+  document.getElementById("winner").textContent = winner;
+}
