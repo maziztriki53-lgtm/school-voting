@@ -6,6 +6,7 @@ body {
   text-align:center;
 }
 .hidden { display:none; }
+
 .card {
   background:white;
   padding:15px;
@@ -24,6 +25,7 @@ input {
   border-radius:8px;
   font-size:16px;
 }
+
 button {
   padding:10px;
   background:#4CAF50;
@@ -47,7 +49,9 @@ th, td {
   padding:12px;
   border-bottom:1px solid #ddd;
 }
+
 ul { list-style:none; padding:0; }
+
 li {
   background:white;
   margin:8px auto;
@@ -60,6 +64,7 @@ li {
   justify-content:space-between;
   align-items:center;
 }
+
 .voteBtn {
   background:#2196F3;
   padding:8px 14px;
